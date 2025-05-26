@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+
+model Objective {
+  id            Int             @id @default(autoincrement())
+  name          String          @db.VarChar(255)
+  description   String          @db.VarChar(255)
+  goalBase      Decimal         @db.Decimal(10, 2)
+  goalAverage   Decimal         @db.Decimal(10, 2)
+  active        Boolean         @default(true)
+  departmentId  Int?
+  usercreate    String?         @db.VarChar(50)
+  createdate    DateTime?       @db.DateTime
+  objectiveGoal ObjectiveGoal[]
+
+  @@map("Objective")
+}
+
+model ObjectiveGoal {
+  idObjgoal   Int       @id @default(autoincrement()) @map("idObjgoal")
+  idObjective Int
+  currentGoal Decimal    @db.Decimal(10, 2)
+  usercreate  String?    @db.VarChar(50)
+  createdate  DateTime?  @db.DateTime
+  month       Int?
+  years       Int?
+  objective   Objective  @relation(fields: [idObjective], references: [id], map: "fk_objective")
+
+  @@map("objectiveGoal")
+}
