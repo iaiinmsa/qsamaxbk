@@ -7,7 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 model Objective {
   id            Int             @id @default(autoincrement())
   name          String          @db.VarChar(255)
@@ -26,12 +25,100 @@ model Objective {
 model ObjectiveGoal {
   idObjgoal   Int       @id @default(autoincrement()) @map("idObjgoal")
   idObjective Int
-  currentGoal Decimal    @db.Decimal(10, 2)
-  usercreate  String?    @db.VarChar(50)
-  createdate  DateTime?  @db.DateTime
+  currentGoal Decimal   @db.Decimal(10, 2)
+  usercreate  String?   @db.VarChar(50)
+  createdate  DateTime? @db.DateTime
   month       Int?
   years       Int?
-  objective   Objective  @relation(fields: [idObjective], references: [id], map: "fk_objective")
+  objective   Objective @relation(fields: [idObjective], references: [id], map: "fk_objective")
 
   @@map("objectiveGoal")
+}
+
+model CauseNonconformity {
+  causeNonconformityId Int                    @id @default(autoincrement())
+  description          String?                @db.VarChar(250)
+  letter               String?                @db.VarChar(1)
+  active               Boolean                @default(true)
+  nonConformingProduct NonConformingProduct[]
+
+  @@map("causeNonconformity")
+}
+
+model Disposition {
+  dispositionId        Int                    @id @default(autoincrement())
+  description          String?                @db.VarChar(250)
+  active               Boolean                @default(true)
+  nonConformingProduct NonConformingProduct[] // Relation to NonConformingProduct
+
+  @@map("disposition")
+}
+
+model Product {
+  productId             Int                    @id @default(autoincrement())
+  description           String?                @db.VarChar(255)
+  active                Boolean                @default(true)
+  nonConformingProducts NonConformingProduct[] // Relation to NonConformingProduct
+
+  @@map("product")
+}
+
+model NonConformityAttachment {
+  nonConformityAttachmentId Int                  @id @default(autoincrement())
+  filePath                  String?              @db.VarChar(500)
+  fileName                  String?              @db.VarChar(255)
+  loadDate                  DateTime?            @default(now())
+  productLinks              ProductAttachments[]
+
+  @@map("NonConformityAttachments")
+}
+1
+
+model NonConformingProduct {
+  nonConformingProductId          Int                  @id @default(autoincrement())
+  productionOrderId               String?              @db.VarChar(50)
+  idproject                       String?              @db.VarChar(50)
+  manufacturingDate               DateTime?
+  createdBy                       String?              @db.VarChar(50)
+  creationDate                    DateTime?
+  idProduct                       Int
+  product                         Product              @relation(fields: [idProduct], references: [productId])
+  departmentId                    Int?
+  intendedRecipient               String?              @db.VarChar(150)
+  rejectedQuantity                Decimal?             @db.Decimal(10, 2)
+  planningComment                 String?              @db.Text
+  idCauseNonConformity            Int
+  causeNonConformity              CauseNonconformity   @relation(fields: [idCauseNonConformity], references: [causeNonconformityId])
+  iddisposition                   Int
+  disposition                     Disposition          @relation(fields: [iddisposition], references: [dispositionId])
+  doComment                       String?              @db.Text
+  dispositionCost                 Decimal?             @default(0) @db.Decimal(10, 2)
+  estimatedClosingDate            DateTime?
+  doObservation                   String?              @db.Text
+  approvedProject                 Boolean              @default(false)
+  approvedProjectUser             String?              @db.VarChar(50)
+  approvedFinancialManagement     Boolean              @default(false)
+  approvedFinancialManagementUser String?              @db.VarChar(50)
+  approvedGeneralManagement       Boolean              @default(false)
+  approvedGeneralManagementUser   String?              @db.VarChar(50)
+  realClosingDate                 DateTime?
+  checkObservation                String?              @db.Text
+  attachmentLinks                 ProductAttachments[]
+
+  @@map("NonConformingProduct")
+}
+
+model ProductAttachments {
+  ProductAttachmentsid Int @id @default(autoincrement())
+
+  nonConformingProductId    Int
+  nonConformityAttachmentId Int
+
+  // Relaciones a las tablas principales con onDelete y nombres de relación opuestos
+  nonConformingProduct    NonConformingProduct    @relation(fields: [nonConformingProductId], references: [nonConformingProductId], onDelete: Cascade)
+  nonConformityAttachment NonConformityAttachment @relation(fields: [nonConformityAttachmentId], references: [nonConformityAttachmentId], onDelete: Cascade)
+
+  // Restricción única para el par de IDs para evitar duplicados
+  @@unique([nonConformingProductId, nonConformityAttachmentId], name: "unique_product_attachment_pair")
+  @@map("ProductAttachments")
 }
