@@ -76,6 +76,35 @@ export class ProductAttachmentsService {
     return productAttachment;
   }
 
+
+  async findByNonConformingProductId(id: number): Promise<ProductAttachments[]> {
+    const productAttachment = await this.prisma.productAttachments.findMany({
+      where: { nonConformingProductId: id },
+      include: {
+        nonConformingProduct: {
+          select: {
+            nonConformingProductId: true,
+            productionOrderId: true,
+          },
+        },
+        nonConformityAttachment: {
+          select: {
+            nonConformityAttachmentId: true,
+            fileName: true,
+            filePath: true,
+          },
+        },
+      },
+    });
+  
+    if (!productAttachment) {
+      throw new NotFoundException(`No ProductAttachment found for nonConformingProductId ${id}`);
+    }
+  
+    return productAttachment;
+  }
+
+
   async update(id: number, updateProductAttachmentDto: UpdateProductAttachmentDto): Promise<ProductAttachments> {
     const existingEntry = await this.findOne(id); // Verificar que el link exista
 

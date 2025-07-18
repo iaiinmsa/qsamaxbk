@@ -22,7 +22,7 @@ export class AttachmentService {
       const attachment = await this.prisma.nonConformityAttachment.create({
         data: {
           filePath: filePath,
-          fileName: file.originalname,
+          fileName: file.filename, // file.originalname,
           loadDate: new Date(),
         },
       });

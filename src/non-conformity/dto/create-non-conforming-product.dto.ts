@@ -8,6 +8,7 @@ import {
   Min,
   IsBoolean,
   MaxLength,
+  IsArray,
 } from 'class-validator';
 
 export class CreateNonConformingProductDto {
@@ -135,6 +136,16 @@ export class CreateNonConformingProductDto {
   @IsString()
   checkObservation?: string;
 
+  @ApiPropertyOptional({
+    description: 'Array of NonConformityAttachment IDs to link to this NonConformingProduct',
+    type: [Number],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsInt({ each: true }) // Valida que cada elemento del array sea un entero
+  // @ArrayMinSize(1) // Descomenta si quieres que, si se provee el array, tenga al menos un elemento
+  nonConformityAttachmentIds?: number[];
+  
  // nonConformityAttachmentIds?: number[];
 
 //  @ApiPropertyOptional()

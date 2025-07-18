@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service'; // Adjust path if your PrismaService is elsewhere
 import { CauseNonconformity, NonConformingProduct } from '@prisma/client';
 import { CreateCauseNonconformityDto } from './dto/create-cause-nonconformity.dto';
@@ -13,13 +13,20 @@ export class NonConformityService {
   constructor(private prisma: PrismaService) {}
 
 
-  /*
- async createNonConformingProducts(
+  
+  async createNonConformingProduct(
     dto: CreateNonConformingProductDto,
   ): Promise<NonConformingProduct> {
     const { nonConformityAttachmentIds, ...productData } = dto;
 
+
+    console.log('Received DTO:', JSON.stringify(dto, null, 2)); // Log completo del DTO
+    console.log('Extracted nonConformityAttachmentIds:', nonConformityAttachmentIds); // Log de los IDs
+    console.log('Product Data for creation:', productData); // Log de los datos del producto
+
+
     // Paso 1: Validar que las entidades referenciadas directamente existan (Product, Cause, Disposition)
+    // (Este código ya lo tienes o es similar al que te he mostrado antes)
     const productExists = await this.prisma.product.findUnique({
       where: { productId: productData.idProduct },
     });
@@ -27,12 +34,7 @@ export class NonConformityService {
       throw new NotFoundException(`Product with ID ${productData.idProduct} not found.`);
     }
 
-    const causeExists = await this.prisma.causeNonconformity.findUnique({
-      where: { causeNonconformityId: productData.idCauseNonConformity },
-    });
-    if (!causeExists) {
-      throw new NotFoundException(`CauseNonconformity with ID ${productData.idCauseNonConformity} not found.`);
-    }
+   
 
     const dispositionExists = await this.prisma.disposition.findUnique({
       where: { dispositionId: productData.iddisposition },
@@ -40,6 +42,7 @@ export class NonConformityService {
     if (!dispositionExists) {
       throw new NotFoundException(`Disposition with ID ${productData.iddisposition} not found.`);
     }
+    // ... Fin de validaciones de entidades principales
 
     // Paso 2 (Opcional pero recomendado): Validar que los NonConformityAttachment IDs existan
     if (nonConformityAttachmentIds && nonConformityAttachmentIds.length > 0) {
@@ -47,41 +50,56 @@ export class NonConformityService {
         where: {
           nonConformityAttachmentId: { in: nonConformityAttachmentIds },
         },
-        select: { nonConformityAttachmentId: true },
+        select: { nonConformityAttachmentId: true }, // Solo necesitamos los IDs para verificar existencia
       });
 
       if (attachments.length !== nonConformityAttachmentIds.length) {
         const foundIds = attachments.map(a => a.nonConformityAttachmentId);
         const notFoundIds = nonConformityAttachmentIds.filter(id => !foundIds.includes(id));
-        throw new NotFoundException(`NonConformityAttachment(s) with ID(s) ${notFoundIds.join(', ')} not found.`);
+        throw new NotFoundException(
+          `NonConformityAttachment(s) with ID(s) ${notFoundIds.join(', ')} not found. Cannot create links.`
+        );
       }
     }
 
-
     // Paso 3: Crear el NonConformingProduct y las relaciones en ProductAttachments
-    return this.prisma.nonConformingProduct.create({
-      data: {
-        ...productData,
-        ...(nonConformityAttachmentIds && nonConformityAttachmentIds.length > 0 && {
+    try {
+      const createdNonConformingProduct = await this.prisma.nonConformingProduct.create({
+        data: {
+          ...productData, // Todos los campos de NonConformingProduct
+          // Crear las relaciones en ProductAttachments si se proporcionaron IDs
+          ...(nonConformityAttachmentIds && nonConformityAttachmentIds.length > 0 && {
+            attachmentLinks: { // Este es el nombre de la relación en tu modelo NonConformingProduct
+              create: nonConformityAttachmentIds.map((attachmentId) => ({
+                // Prisma infiere nonConformingProductId porque estamos creando dentro de un NonConformingProduct
+                nonConformityAttachment: { // Esta es la relación en ProductAttachments hacia NonConformityAttachment
+                  connect: { nonConformityAttachmentId: attachmentId },
+                },
+              })),
+            },
+          }),
+        },
+        include: { // Opcional: Incluir los adjuntos en la respuesta para verificar
           attachmentLinks: {
-            create: nonConformityAttachmentIds.map((attachmentId) => ({
-              nonConformityAttachment: {
-                connect: { nonConformityAttachmentId: attachmentId },
-              },
-            })),
-          },
-        }),
-      },
-      include: { // Incluir los adjuntos en la respuesta para verificar
-        attachmentLinks: {
-          include: {
-            nonConformityAttachment: true,
+            include: {
+              nonConformityAttachment: true,
+            },
           },
         },
-      },
-    });
+      });
+      return createdNonConformingProduct;
+    } catch (error) {
+      // Manejo de errores más específico si es necesario
+      if (error.code === 'P2003') { // Ejemplo: Error de clave foránea
+          throw new BadRequestException(`Foreign key constraint failed. Ensure all provided IDs are valid. Details: ${error.meta?.field_name}`);
+      }
+      console.error("Error creating non-conforming product with attachments:", error);
+      throw new InternalServerErrorException('Could not create non-conforming product with attachments.');
+    }
   }
-*/
+
+
+
 
 
   // --- CauseNonconformity CRUD ---
@@ -126,7 +144,7 @@ export class NonConformityService {
   }
 
   // --- NonConformingProduct CRUD ---
-  async createNonConformingProduct(
+ /* async createNonConformingProduct(
     dto: CreateNonConformingProductDto,
   ): Promise<NonConformingProduct> {
     // Potentially add checks here if related entities (idProduct, etc.) exist
@@ -134,7 +152,7 @@ export class NonConformityService {
 
         
     });
-  }
+  }*/
 
   async findAllNonConformingProducts(): Promise<NonConformingProduct[]> {
     return this.prisma.nonConformingProduct.findMany({

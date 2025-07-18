@@ -263,7 +263,9 @@ En el archivo `package.json`, puedes encontrar varios scripts útiles:
 -   `npm run test:cov`: Ejecuta pruebas unitarias y genera un reporte de cobertura.
 -   `npm run test:e2e`: Ejecuta pruebas de extremo a extremo.
 -   `npx prisma ...`: Varios comandos de Prisma para migraciones, generación de cliente, etc.
-
+-   `npx prisma generate`: cuando se agrega un nuevo modelo a prisma se debe ejecutar este comando.
 ---
 
 Este `README.md` debería proporcionar una buena base para tu proyecto. Puedes añadir más secciones según sea necesario, como "Contribución", "Licencia", "Estructura del Proyecto", etc.
+
+para poder actualizar los cambios en la bd con prisma nesecita los siguiente comandos npx prisma generate

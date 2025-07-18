@@ -11,12 +11,17 @@ import {
     HttpStatus,
     Query,
     NotFoundException,
+    Res,
   } from '@nestjs/common';
   import { ProductAttachmentsService } from './product-attachments.service';
   import { CreateProductAttachmentDto } from './dto/create-product-attachment.dto';
   import { UpdateProductAttachmentDto } from './dto/update-product-attachment.dto';
   import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+  import * as fs from 'fs';
+  import { Response } from 'express';
+  import { join } from 'path';
   
+
   @ApiTags('Product Attachments (Links)')
   @Controller('product-attachments')
   export class ProductAttachmentsController {
@@ -64,6 +69,17 @@ import {
     findOne(@Param('id', ParseIntPipe) id: number) {
       return this.productAttachmentsService.findOne(id);
     }
+
+
+    @Get('by-product/:id')
+    @ApiOperation({ summary: 'Get a specific link by its own ID Product' })
+    @ApiParam({ name: 'id', description: 'ID of the Product link entry', type: Number })
+    @ApiResponse({ status: 200, description: 'The link details.' })
+    @ApiResponse({ status: 404, description: 'Link not found.' })
+    async findByProduct(@Param('id', ParseIntPipe) id: number) {
+      return this.productAttachmentsService.findByNonConformingProductId(id);
+    }
+
   
     @Patch(':id')
     @ApiOperation({ summary: 'Update a link by its own ID' })
@@ -101,4 +117,22 @@ import {
     ) {
       return this.productAttachmentsService.removeByProductAndAttachmentIds(productId, attachmentId);
     }
+
+
+    @Get('download/:filename')
+    async downloadFile(@Param('filename') filename: string, @Res() res: Response) {
+     // const filePath = join(__dirname, '..', 'public', 'uploads', 'attachments', filename);
+      
+      const filePath = join(process.cwd(), 'public', 'uploads', 'attachments', filename);
+
+
+      console.log('ruta imagen', filePath )
+      if (!fs.existsSync(filePath)) {
+        throw new NotFoundException('Archivo no encontrado');
+      }
+      res.sendFile(filePath);
+      //return res.download(filePath, filename);
+    }
+  
+
   }
