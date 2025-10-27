@@ -176,3 +176,159 @@ model FuelConsumptionControl {
   car                  Car               @relation("CarToFuel", fields: [carId], references: [id])
   transportOperator    TransportOperator @relation("OperatorToFuel", fields: [transportoperatorid], references: [id])
 }
+
+model plan_header {
+  idPlan           Int            @id @default(autoincrement()) @map("idPlan")
+  user_name        String
+  production_order String
+  project_name     String
+  created_at       DateTime?      @default(now())
+  plan_details     plan_detail[]  @relation("PlanHeaderToDetails")
+}
+
+model plan_detail {
+  idplanDetail     Int          @id @default(autoincrement()) @map("idplanDetail")
+  plan_header_id   Int
+  file_path        String
+  plan_type_id   Int         @map("plan_type")  // 👈 sigue apuntando a la columna existente
+  uploaded_by      String
+  file_name        String
+  upload_at        DateTime?    @default(now())
+  plan_review      String
+
+  plan_header      plan_header  @relation("PlanHeaderToDetails", fields: [plan_header_id], references: [idPlan])
+  plan_type      plan_type   @relation(fields: [plan_type_id], references: [idplanttype])
+}
+
+
+model plan_type {
+  idplanttype   Int    @id @default(autoincrement())
+  nomenclature  String
+  name          String
+  descripcion   String
+
+  plan_details  plan_detail[]
+}
+
+model VacationRequest {
+  id                           Int      @id @default(autoincrement())
+  request_date                 DateTime
+  employee_code                String   @db.VarChar(50)
+  years_worked                 Int
+  vacation_hours               Decimal  @db.Decimal(10, 2)
+  vacation_start_date          DateTime
+  vacation_end_date            DateTime
+  half_day_vacation            Boolean  @default(false)
+  vacation_period              String   @db.VarChar(20)
+  status                       Status   @default(register)
+  requester                    String   @db.VarChar(100)
+  immediate_supervisor_approved Boolean @default(false)
+  process_manager_approved     Boolean  @default(false)
+  pending_days                 Decimal  @db.Decimal(10, 2)
+  current_days                 Decimal  @db.Decimal(10, 2)
+  calculated_days              Decimal  @db.Decimal(10, 2)
+  process_manageruser_by       String   @db.VarChar(255)
+  process_manager_at           DateTime?
+  superviso_by                 String   @db.VarChar(255)
+  superviso_at                 DateTime?
+}
+
+enum Status {
+  pending
+  approved
+  rejected
+  register
+  empty // for ''
+}
+
+model ApprovalGroup {
+  id          Int                      @id @default(autoincrement())
+  name        String                   @db.VarChar(100)
+  description String?                   @db.Text
+  createdAt   DateTime                  @default(now()) @map("created_at")
+
+  employees   ApprovalGroupEmployee[]
+  managers    ApprovalGroupManager[]
+
+  @@map("approval_group") // nombre real en MySQL
+}
+
+model ApprovalGroupEmployee {
+  id           Int            @id @default(autoincrement())
+  groupId      Int            @map("group_id")
+  employeeCode String         @map("employee_code") @db.VarChar(50)
+
+  group        ApprovalGroup  @relation(fields: [groupId], references: [id])
+
+  @@map("approval_group_employees") // nombre real en MySQL
+}
+
+model ApprovalGroupManager {
+  id             Int            @id @default(autoincrement())
+  groupId        Int            @map("group_id")
+  superviserCode String         @map("superviser_code") @db.VarChar(255)
+
+  group          ApprovalGroup  @relation(fields: [groupId], references: [id])
+
+  @@map("approval_group_managers") // nombre real en MySQL
+}
+
+
+model ManufacturingOrder {
+  idManufacturingOrder    Int                        @id @default(autoincrement())
+  productionOrder         String                     @unique
+  assignedTo              String?
+  requestedBy             String?
+  createDate              DateTime?
+  customerCode            String?
+  contactName             String?
+  contactPhone            String?
+  contactEmail            String?
+  projectScope            String?
+  location                String?
+  metalWeight             Decimal?
+  unitofMeasure           String?
+  grandTotal              Decimal
+  currency                String?
+  paymentFactor           Decimal?
+  payTerm                 String?
+  deliveryTime            String?
+  productionOrderLabel    String?
+  ProductionOrderId       Int?
+  observation             String?
+  createAt                DateTime?
+  createBy                String?
+
+  details                 ManufacturingOrderDetail[]
+
+    @@map("manufacturing_order") // nombre real en MySQL
+}
+
+model ManufacturingOrderDetail {
+  idmanufacturingOrderDetail Int                   @id @default(autoincrement())
+  manufacturingOrderId       Int
+  filePath                   String?
+  uploadBy                    String?
+  fileName                    String?
+  description                 String?
+
+  order                     ManufacturingOrder     @relation(fields: [manufacturingOrderId], references: [idManufacturingOrder])
+
+  @@map("manufacturing_order_Detail") // nombre real en MySQL
+}
+
+
+// schema.prisma
+model ReportHeader {
+  id           Int      @id @default(autoincrement())
+  systemName   String   @map("system_name")
+  companyLogo  String?  @map("company_logo")  // opcional, porque es NULLable
+  reportName   String   @map("report_name")
+  reportCode   String   @map("report_code")
+  version      String?  @default("1.0")
+  createdAt    DateTime? @map("created_at")   // opcional para que pueda ser NULL
+  createdBy    String   @map("created_by")
+
+  @@map("report_headers") // nombre real de la tabla en MySQL
+}
+

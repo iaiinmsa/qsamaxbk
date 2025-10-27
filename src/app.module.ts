@@ -1,3 +1,8 @@
+import { VacationRequestModule } from './vacation_requests/vacation-request.module';
+import { Plan_typeModule } from './planheader/plantype/plan_type.module';
+import { Plan_typeController } from './planheader/plantype/plan_type.controller';
+import { Plan_headerModule } from './planheader/plan_header.module';
+import { Plan_headerController } from './planheader/plan_header.controller';
 import { FuelConsumptionControlModule } from './fuel-consumption-control/fuelconsumptioncontrol.module';
 import { CarModule } from './car/car.module';
 import { TypecarModule } from './typecar/typecar.module';
@@ -14,11 +19,20 @@ import { ProductModule } from './product/product.module';
 import { AttachmentModule } from './attachment/attachment.module';
 import { ProductAttachmentsModule } from './product-attachments/product-attachments.module';
 import { RequeststockappModule } from './openorange/requeststockapp.module';
+import { ManufacturingOrderModule } from './manufacturingorder/manufacturing-order.module';
+import { ConfigModule } from '@nestjs/config';
+import { ReportModule } from './report/Mercadeo/report.module';
 
 
 
 @Module({
   imports: [
+     ConfigModule.forRoot({
+      isGlobal: true, // para que sea accesible en todos los módulos
+    }),
+    VacationRequestModule,
+    Plan_typeModule,
+    Plan_headerModule,
     FuelConsumptionControlModule,
 
     CarModule,
@@ -30,9 +44,16 @@ import { RequeststockappModule } from './openorange/requeststockapp.module';
     ProductModule,     // <-- Add this
     AttachmentModule,
     ProductAttachmentsModule,
-    RequeststockappModule
+    RequeststockappModule,
+    Plan_headerModule,
+    VacationRequestModule,
+    ManufacturingOrderModule ,
+    ReportModule,
+
   ],
   //  controllers: [
+
+
   // roviders: [AppService],
 })
 export class AppModule { }

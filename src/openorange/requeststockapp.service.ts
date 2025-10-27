@@ -78,11 +78,18 @@ export class RequeststockappService {
 
     
     async workordershow() {
-        const result = await this.prisma.$queryRawUnsafe<any[]>(`
+        const resultd = await this.prisma.$queryRawUnsafe<any[]>(`
             SELECT w.Labels AS op, w.SerNr AS numero, w.Comment AS descripcion
             FROM inmsa.workorder w;
           `);
 
+
+              const result = await this.prisma.$queryRawUnsafe<any[]>(`
+        SELECT code AS op, name AS descripcion, internalId AS numero 
+        FROM inmsa.label 
+        WHERE type = 'OPS';
+    `);
+    return this.mapBigIntToString(result);
           const data = result.map((row: any) => {
             return Object.fromEntries(
               Object.entries(row).map(([key, value]) => [
@@ -144,6 +151,9 @@ export class RequeststockappService {
 
 async approveRequisition(internalId: number, authorizedBy: string) {
   try {
+
+    authorizedBy = authorizedBy.toUpperCase();
+    
     await this.prisma.$executeRawUnsafe(`
       UPDATE inmsa.stockrequest
       SET WasApproved = 1, status = 1,
@@ -157,6 +167,167 @@ async approveRequisition(internalId: number, authorizedBy: string) {
     throw new Error('No se pudo aprobar la requisición');
   }
 }
+
+
+async getEmployeeDetails() {
+  const result = await this.prisma.$queryRawUnsafe<any[]>(`
+    SELECT 
+      CONCAT(e.Name, ' ', e.LastName, ' ', e.LastName2) AS nombre,
+      e.Email AS correo,
+      e.startdate AS fechaingreso,
+      e.labels,
+      e.code AS codigo,
+      e.jobposition AS posicion,
+      j.Comment AS puesto,
+      l.Name AS proceso
+    FROM inmsa.employee e
+    left JOIN inmsa.jobposition j ON j.code = e.jobposition
+    left JOIN inmsa.label l ON l.code = e.labels
+  `);
+
+  const data = result.map((row: any) => {
+    return Object.fromEntries(
+      Object.entries(row).map(([key, value]) => [
+        key,
+        typeof value === 'bigint' ? value.toString() : value
+      ])
+    );
+  });
+
+  return data;
+}
+
+
+
+  async getCurrency() {
+    const result = await this.prisma.$queryRawUnsafe<any[]>(`
+        SELECT code AS codigo, alias, internalId AS numero FROM inmsa.currency;
+    `);
+    return this.mapBigIntToString(result);
+}
+
+async getCustomer() {
+    const result = await this.prisma.$queryRawUnsafe<any[]>(`
+        SELECT code AS codigo, fantasyname, name AS nombre, taxregnr AS rtn FROM inmsa.customer;
+    `);
+    return this.mapBigIntToString(result);
+}
+
+async getUnit() {
+    const result = await this.prisma.$queryRawUnsafe<any[]>(`
+        SELECT code AS codigo, name AS nombre, internalId AS numero FROM inmsa.unit u;
+    `);
+    return this.mapBigIntToString(result);
+}
+
+async getLabelOps() {
+    const result = await this.prisma.$queryRawUnsafe<any[]>(`
+        SELECT code AS codigo, name AS nombre, internalId AS numero 
+        FROM inmsa.label 
+        WHERE type = 'OPS';
+    `);
+    return this.mapBigIntToString(result);
+}
+
+// Método helper para convertir BigInt a string
+private mapBigIntToString(result: any[]) {
+    return result.map(row =>
+        Object.fromEntries(
+            Object.entries(row).map(([k, v]) => [k, typeof v === 'bigint' ? v.toString() : v])
+        )
+    );
+}
+
+
+ // Método para insertar etiqueta
+  async createLabel(labelData: {
+    code: string;
+    name: string;
+    level: number;
+    syncversion: number;
+    closed: number;
+    type: string;
+  }) {
+    const dbName = process.env.DB_DATABASEOPORANGE; // variable de entorno
+
+    const { code, name, level, syncversion, closed, type } = labelData;
+
+    const query = `
+      INSERT INTO ${dbName}.label 
+      (code, name, level, syncversion, closed, type)
+      VALUES (
+        ${JSON.stringify(code)},
+        ${JSON.stringify(name)},
+        ${level},
+        ${syncversion},
+        ${closed},
+        ${JSON.stringify(type)}
+      );
+    `;
+
+    try {
+      await this.prisma.$executeRawUnsafe(query);
+      return { success: true, message: 'Etiqueta creada correctamente' };
+    } catch (error) {
+      console.error('Error creando etiqueta:', error);
+      throw new Error('No se pudo crear la etiqueta');
+    }
+  }
+
+
+  async createLabelAndUpdateOrder(labelData: {
+  code: string;
+  name: string;
+  level: number;
+  syncversion: number;
+  closed: number;
+  type: string;
+}) {
+  const dbName = process.env.DB_DATABASEOPORANGE;
+  const { code, name, level, syncversion, closed, type } = labelData;
+
+  try {
+    const result = await this.prisma.$transaction(async (tx) => {
+
+      // 1️⃣ Crear la etiqueta
+      await tx.$executeRawUnsafe(
+        `INSERT INTO ${dbName}.label (code, name, level, syncversion, closed, type)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        code,
+        name,
+        level,
+        syncversion,
+        closed,
+        type
+      );
+
+      // 2️⃣ Obtener internalId recién generado
+      const queryResult: any = await tx.$queryRawUnsafe(
+        `SELECT internalId FROM ${dbName}.label 
+         WHERE code = ? ORDER BY internalId DESC LIMIT 1`,
+        code
+      );
+      const internalId = queryResult[0]?.internalId;
+      if (!internalId) throw new Error('No se pudo obtener internalId');
+
+      // 3️⃣ Actualizar la orden de producción existente
+      await tx.manufacturingOrder.update({
+        where: { productionOrder: code },
+        data: { ProductionOrderId: internalId },
+      });
+
+      return { success: true, internalId };
+    });
+
+    return result;
+
+  } catch (error) {
+    console.error('Error creando etiqueta y actualizando orden:', error);
+    throw new Error('No se pudo crear la etiqueta ni actualizar la orden');
+  }
+}
+
+
 
 
 
